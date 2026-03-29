@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSI Dropout Radar — Sistema de Alerta de Evasão</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    /* ═══════════════ TOKENS ═══════════════ */
+    :root {
+      --g50:#f0fdf4;--g100:#dcfce7;--g200:#bbf7d0;--g300:#86efac;
+      --g400:#4ade80;--g500:#22c55e;--g600:#16a34a;--g700:#15803d;--g800:#166534;
+      --n50:#f8fafc;--n100:#f1f5f9;--n200:#e2e8f0;--n300:#cbd5e1;
+      --n400:#94a3b8;--n500:#64748b;--n600:#475569;--n700:#334155;--n800:#1e293b;--n900:#0f172a;
+      --r50:#fff1f2;--r100:#ffe4e6;--r500:#ef4444;--r600:#dc2626;--r700:#b91c1c;
+      --a50:#fffbeb;--a100:#fef3c7;--a500:#f59e0b;--a600:#d97706;--a700:#b45309;
+      --white:#fff;
+      --font:'Plus Jakarta Sans',system-ui,sans-serif;
+      --rsm:6px;--rmd:10px;--rlg:16px;--rxl:20px;--rfull:9999px;
+      --sh-xs:0 1px 2px rgba(0,0,0,.05);
+      --sh-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+      --sh-md:0 4px 6px -1px rgba(0,0,0,.07),0 2px 4px -1px rgba(0,0,0,.04);
+      --sh-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -2px rgba(0,0,0,.03);
+      --tf:120ms ease;--tb:200ms ease;--ts:350ms cubic-bezier(.4,0,.2,1);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--n50);color:var(--n800);line-height:1.5;-webkit-font-smoothing:antialiased}
+    :focus-visible{outline:2px solid var(--g500);outline-offset:2px;border-radius:var(--rsm)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+    /* ═══════════ HEADER ═══════════ */
+    .hdr{background:var(--white);border-bottom:1px solid var(--n200);position:sticky;top:0;z-index:100;box-shadow:var(--sh-xs)}
+    .hdr-in{max-width:1280px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+    .logo-ico{width:36px;height:36px;background:linear-gradient(135deg,var(--g500),var(--g700));border-radius:var(--rmd);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(34,197,94,.35)}
+    .logo-ico svg{color:#fff}
+    .logo-txt{display:flex;flex-direction:column;line-height:1.1}
+    .logo-name{font-size:15px;font-weight:800;color:var(--n900);letter-spacing:-.02em}
+    .logo-sub{font-size:11px;font-weight:500;color:var(--n400);letter-spacing:.02em}
+    .hdr-badge{display:flex;align-items:center;gap:6px;background:var(--g50);border:1px solid var(--g200);color:var(--g700);font-size:12px;font-weight:600;padding:4px 12px;border-radius:var(--rfull)}
+    .hdr-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--g500);animation:blink 2s ease-in-out infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* ═══════════ PAGE ═══════════ */
+    .page{max-width:1280px;margin:0 auto;padding:32px 24px 64px}
+
+    /* ═══════════ HERO ═══════════ */
+    .hero{margin-bottom:28px;animation:fadeUp .4s ease both}
+    .hero-kicker{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+    .hero h1{font-size:clamp(20px,3vw,28px);font-weight:800;color:var(--n900);letter-spacing:-.03em;line-height:1.15;margin-bottom:6px}
+    .hero p{font-size:14px;color:var(--n500);max-width:520px}
+
+    /* ═══════════ STATS ROW ═══════════ */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;animation:fadeUp .4s .07s ease both}
+    .stat-card{background:var(--white);border:1px solid var(--n200);border-radius:var(--rlg);padding:18px;box-shadow:var(--sh-sm);display:flex;align-items:flex-start;gap:12px;transition:box-shadow var(--tb),transform var(--tb)}
+    .stat-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
+    .stat-ico{width:38px;height:38px;border-radius:var(--rmd);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .ico-g{background:var(--g50);color:var(--g600)} .ico-r{background:var(--r50);color:var(--r600)}
+    .ico-a{background:var(--a50);color:var(--a600)} .ico-s{background:var(--n100);color:var(--n500)}
+    .stat-info{flex:1;min-width:0}
+    .stat-val{font-size:20px;font-weight:800;color:var(--n900);letter-spacing:-.03em;line-height:1;margin-bottom:3px}
+    .stat-lbl{font-size:11px;font-weight:500;color:var(--n400)}
+
+    /* ═══════════ GRID ═══════════ */
+    .mg{display:grid;grid-template-columns:370px 1fr;gap:22px;align-items:start;animation:fadeUp .4s .14s ease both}
+
+    /* ═══════════ CARD ═══════════ */
+    .card{background:var(--white);border:1px solid var(--n200);border-radius:var(--rxl);box-shadow:var(--sh-sm)}
+    .c-hdr{padding:20px 22px 0;display:flex;align-items:center;gap:10px;margin-bottom:18px}
+    .c-hdr-ico{width:30px;height:30px;border-radius:var(--rmd);background:var(--g50);color:var(--g600);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .c-title{font-size:13px;font-weight:700;color:var(--n800);letter-spacing:-.01em}
+    .c-sub{font-size:12px;font-weight:500;color:var(--n400);margin-left:auto}
+    .c-body{padding:0 22px 22px}
+
+    /* ═══════════ INPUT PANEL ═══════════ */
+    .sec-lbl{font-size:11px;font-weight:700;color:var(--n400);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+
+    /* Select */
+    .sel-wrap{position:relative;margin-bottom:18px}
+    .sel-wrap select{width:100%;padding:10px 34px 10px 12px;border:1.5px solid var(--n200);border-radius:var(--rmd);background:var(--n50);color:var(--n700);font-family:var(--font);font-size:13px;font-weight:500;appearance:none;cursor:pointer;transition:border-color var(--tf),background var(--tf);outline:none}
+    .sel-wrap select:focus{border-color:var(--g500);background:var(--white)}
+    .sel-wrap select:hover{border-color:var(--n300)}
+    .sel-chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--n400);pointer-events:none}
+
+    /* Divider */
+    .dvd{border:none;border-top:1px solid var(--n100);margin:18px 0}
+
+    /* Slider */
+    .sl-grp{margin-bottom:18px}
+    .sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+    .sl-lbl{font-size:13px;font-weight:600;color:var(--n700)}
+    .sl-val{font-size:14px;font-weight:700;color:var(--g600);min-width:40px;text-align:right;transition:color var(--tb)}
+    .sl-val.warn{color:var(--a600)} .sl-val.danger{color:var(--r600)}
+    .sl-track{position:relative;height:6px;background:var(--n200);border-radius:var(--rfull);margin-bottom:5px}
+    .sl-fill{position:absolute;left:0;top:0;height:100%;border-radius:var(--rfull);background:linear-gradient(90deg,var(--g400),var(--g600));transition:width var(--tb),background var(--tb);pointer-events:none}
+    .sl-fill.warn{background:linear-gradient(90deg,var(--a400),var(--a600))}
+    .sl-fill.danger{background:linear-gradient(90deg,#f87171,var(--r600))}
+    input[type=range]{width:100%;height:6px;appearance:none;background:transparent;cursor:pointer;position:absolute;inset:0;margin:0}
+    input[type=range]::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;background:var(--white);border:2.5px solid var(--g500);box-shadow:0 1px 4px rgba(0,0,0,.12);transition:transform var(--tf),box-shadow var(--tf)}
+    input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);box-shadow:0 0 0 4px rgba(34,197,94,.15)}
+    input[type=range]::-webkit-slider-thumb:active{transform:scale(1.15);box-shadow:0 0 0 6px rgba(34,197,94,.2)}
+    .sl-hints{display:flex;justify-content:space-between;font-size:10px;color:var(--n400);font-weight:500}
+
+    /* Stepper */
+    .stp-row{display:flex;align-items:center;border:1.5px solid var(--n200);border-radius:var(--rmd);overflow:hidden;width:fit-content}
+    .stp-btn{width:38px;height:38px;background:var(--n50);border:none;color:var(--n600);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--tf),color var(--tf)}
+    .stp-btn:hover{background:var(--g50);color:var(--g700)} .stp-btn:active{background:var(--g100)}
+    .stp-btn:disabled{opacity:.4;cursor:not-allowed}
+    .stp-v{min-width:52px;height:38px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--n800);border-left:1px solid var(--n200);border-right:1px solid var(--n200);transition:color var(--tb)}
+    .stp-v.warn{color:var(--a600)} .stp-v.danger{color:var(--r600)}
+
+    /* Presets */
+    .pre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:18px}
+    .pre-btn{padding:8px 4px;border-radius:var(--rmd);border:1.5px solid var(--n200);background:var(--white);font-family:var(--font);font-size:11px;font-weight:600;color:var(--n500);cursor:pointer;transition:all var(--tf);text-align:center}
+    .pre-btn:hover{border-color:var(--g400);color:var(--g700);background:var(--g50)}
+    .pre-btn.active.p-low{border-color:var(--g500);background:var(--g50);color:var(--g700)}
+    .pre-btn.active.p-med{border-color:var(--a500);background:var(--a50);color:var(--a700)}
+    .pre-btn.active.p-hi{border-color:var(--r500);background:var(--r50);color:var(--r600)}
+    .pre-btn.active.p-cr{border-color:var(--r700);background:var(--r100);color:var(--r700)}
+
+    /* CTA btn */
+    .btn-cta{width:100%;padding:13px 20px;background:linear-gradient(135deg,var(--g500),var(--g700));color:#fff;font-family:var(--font);font-size:13px;font-weight:700;border:none;border-radius:var(--rmd);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all var(--tb);box-shadow:0 2px 8px rgba(34,197,94,.3);position:relative;overflow:hidden}
+    .btn-cta::before{content:'';position:absolute;inset:0;background:rgba(255,255,255,.1);transform:scaleX(0);transform-origin:left;transition:transform var(--tb)}
+    .btn-cta:hover::before{transform:scaleX(1)} .btn-cta:hover{box-shadow:0 4px 16px rgba(34,197,94,.4);transform:translateY(-1px)}
+    .btn-cta:active{transform:translateY(0);box-shadow:0 2px 8px rgba(34,197,94,.3)}
+    .btn-cta.ld{pointer-events:none;opacity:.8}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .sp{width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+
+    /* ═══════════ RESULTS ═══════════ */
+    .res-col{display:flex;flex-direction:column;gap:18px}
+
+    /* Empty */
+    .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;color:var(--n400);gap:12px}
+    .empty-ico{width:52px;height:52px;border-radius:var(--rxl);background:var(--n100);display:flex;align-items:center;justify-content:center;color:var(--n300)}
+    .empty h3{font-size:14px;font-weight:600;color:var(--n500)}
+    .empty p{font-size:13px;max-width:260px;line-height:1.6}
+
+    /* Result hero */
+    .r-hero{border-radius:var(--rxl);padding:26px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:var(--sh-md);position:relative;overflow:hidden}
+    .r-hero::after{content:'';position:absolute;right:-24px;top:-24px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.07)}
+    .r-hero.safe{background:linear-gradient(135deg,var(--g600),var(--g800))}
+    .r-hero.medium{background:linear-gradient(135deg,var(--a500),var(--a700))}
+    .r-hero.risk{background:linear-gradient(135deg,var(--r500),var(--r700))}
+    .r-left{color:#fff}
+    .r-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:var(--rfull);margin-bottom:10px;color:rgba(255,255,255,.9)}
+    .r-title{font-size:24px;font-weight:800;letter-spacing:-.03em;line-height:1.1;color:#fff;margin-bottom:5px}
+    .r-desc{font-size:13px;color:rgba(255,255,255,.75);font-weight:500}
+    .r-score{display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;flex-shrink:0}
+    .sc-ring{position:relative;width:76px;height:76px}
+    .sc-ring svg{transform:rotate(-90deg)}
+    .sc-bg{fill:none;stroke:rgba(255,255,255,.2);stroke-width:6}
+    .sc-fill{fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round;stroke-dasharray:220;stroke-dashoffset:220;transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1)}
+    .sc-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff}
+    .sc-lbl{font-size:10px;font-weight:600;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.06em}
+
+    /* Meter */
+    .meter-bar{height:10px;background:var(--n100);border-radius:var(--rfull);overflow:hidden;margin:14px 0 8px}
+    .meter-fill{height:100%;border-radius:var(--rfull);transition:width .8s cubic-bezier(.4,0,.2,1),background .4s}
+    .meter-fill.safe{background:linear-gradient(90deg,var(--g400),var(--g600))}
+    .meter-fill.medium{background:linear-gradient(90deg,var(--a400),var(--a600))}
+    .meter-fill.risk{background:linear-gradient(90deg,#f87171,var(--r600))}
+    .zones{display:flex;gap:4px;font-size:11px;font-weight:600}
+    .zone{flex:1;padding:3px 0;text-align:center;border-radius:var(--rsm)}
+    .z-s{color:var(--g600);background:var(--g50)} .z-m{color:var(--a600);background:var(--a50)} .z-r{color:var(--r600);background:var(--r50)}
+
+    /* Metrics */
+    .met-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .met-card{background:var(--white);border:1px solid var(--n200);border-radius:var(--rlg);padding:14px;box-shadow:var(--sh-xs);transition:box-shadow var(--tb),transform var(--tb)}
+    .met-card:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
+    .met-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .met-ico{width:30px;height:30px;border-radius:var(--rmd);display:flex;align-items:center;justify-content:center}
+    .badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--rfull);text-transform:uppercase;letter-spacing:.04em}
+    .b-ok{background:var(--g50);color:var(--g700);border:1px solid var(--g200)}
+    .b-wa{background:var(--a50);color:var(--a700);border:1px solid var(--a100)}
+    .b-da{background:var(--r50);color:var(--r700);border:1px solid var(--r100)}
+    .met-val{font-size:20px;font-weight:800;letter-spacing:-.03em;color:var(--n900)}
+    .met-desc{font-size:11px;font-weight:500;color:var(--n400);margin-top:2px}
+
+    /* Tree */
+    .tree{display:flex;flex-direction:column;gap:0}
+    .t-step{display:flex;align-items:stretch;gap:10px;animation:fadeUp .3s ease both}
+    .t-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:26px}
+    .t-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;transition:all var(--tb)}
+    .t-dot.act{background:var(--g100);color:var(--g700);border:2px solid var(--g400)}
+    .t-dot.l-s{background:var(--g500);color:#fff;border:2px solid var(--g600)}
+    .t-dot.l-r{background:var(--r500);color:#fff;border:2px solid var(--r600)}
+    .t-dot.l-m{background:var(--a500);color:#fff;border:2px solid var(--a600)}
+    .t-line{width:2px;flex:1;background:var(--n200);margin:2px 0;min-height:14px}
+    .t-line.act{background:var(--g300)}
+    .t-right{padding:3px 0 16px;flex:1}
+    .t-q{font-size:13px;font-weight:600;color:var(--n700)}
+    .t-ans{font-size:11px;font-weight:600;color:var(--n400);margin-top:2px}
+    .t-ans.yes{color:var(--g600)} .t-ans.no{color:var(--n400)}
+
+    /* Interventions */
+    .int-list{display:flex;flex-direction:column;gap:9px}
+    .int-item{display:flex;align-items:flex-start;gap:11px;padding:13px;border-radius:var(--rlg);border:1px solid var(--n200);background:var(--n50);transition:all var(--tb);animation:fadeUp .3s ease both}
+    .int-item:hover{border-color:var(--g200);background:var(--g50)}
+    .int-ico{width:34px;height:34px;border-radius:var(--rmd);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .int-body{flex:1}
+    .int-title{font-size:13px;font-weight:600;color:var(--n800);margin-bottom:2px}
+    .int-sub{font-size:12px;color:var(--n400);font-weight:500}
+    .pri{font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--rfull);text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;align-self:flex-start;margin-top:2px}
+    .p-hi{background:var(--r50);color:var(--r700);border:1px solid var(--r100)}
+    .p-me{background:var(--a50);color:var(--a700);border:1px solid var(--a100)}
+    .p-lo{background:var(--g50);color:var(--g700);border:1px solid var(--g200)}
+
+    /* Footer */
+    .ftr{border-top:1px solid var(--n200);background:var(--white);padding:18px 24px;margin-top:48px}
+    .ftr-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .ftr-txt{font-size:12px;color:var(--n400);font-weight:500}
+    .ftr-txt strong{color:var(--n600)}
+    .chips{display:flex;gap:7px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--n500);background:var(--n100);padding:4px 10px;border-radius:var(--rfull)}
+
+    /* Animations */
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+    .ai{animation:scaleIn .35s ease both}
+
+    /* ═══════════ RESPONSIVE ═══════════ */
+    @media(max-width:1024px){.mg{grid-template-columns:330px 1fr}.stats-row{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:768px){
+      .page{padding:18px 14px 40px}
+      .hdr-in{padding:0 14px} .hdr-badge{display:none}
+      .stats-row{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+      .mg{grid-template-columns:1fr}
+      .met-grid{grid-template-columns:repeat(3,1fr)}
+      .r-hero{flex-direction:column;align-items:flex-start}
+      .ftr-in{flex-direction:column;align-items:flex-start}
+    }
+    @media(max-width:480px){
+      .stats-row{grid-template-columns:1fr 1fr}
+      .met-grid{grid-template-columns:1fr 1fr}
+      .pre-grid{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr" role="banner">
+  <div class="hdr-in">
+    <a href="#" class="logo" aria-label="TSI Dropout Radar">
+      <div class="logo-ico" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="logo-txt">
+        <span class="logo-name">TSI Dropout Radar</span>
+        <span class="logo-sub">Sistema de Alerta de Evasão</span>
+      </div>
+    </a>
+    <div class="hdr-badge" aria-label="Sistema ativo">
+      <span class="dot" aria-hidden="true"></span>Sistema Ativo
+    </div>
+  </div>
+</header>
+
+<!-- PAGE -->
+<main class="page" role="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-kicker" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Mineração de Dados · TSI
+    </div>
+    <h1>Previsão e Intervenção de Evasão Acadêmica</h1>
+    <p>Identifique alunos em risco antes do abandono. Insira os dados e obtenha um diagnóstico preditivo baseado em árvore de decisão.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" role="region" aria-label="Estatísticas gerais">
+    <div class="stat-card">
+      <div class="stat-ico ico-r" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+      <div class="stat-info"><div class="stat-val">38–53%</div><div class="stat-lbl">Taxa de evasão em TI</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-a" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="stat-info"><div class="stat-val">4 em 10</div><div class="stat-lbl">Alunos abandonam o curso</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-g" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div class="stat-info"><div class="stat-val">Tempo real</div><div class="stat-lbl">Análise instantânea</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-s" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <div class="stat-info"><div class="stat-val">Árvore</div><div class="stat-lbl">Modelo de decisão preditivo</div></div>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="mg">
+
+    <!-- INPUT -->
+    <aside aria-label="Painel de entrada de dados">
+      <div class="card">
+        <div class="c-hdr">
+          <div class="c-hdr-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <h2 class="c-title">Dados do Aluno</h2>
+          <span class="c-sub" aria-hidden="true">4 variáveis</span>
+        </div>
+        <div class="c-body">
+
+          <div class="sec-lbl">Perfil pré-cadastrado</div>
+          <div class="sel-wrap">
+            <label for="sel" class="sr-only">Selecionar aluno</label>
+            <select id="sel" onchange="loadStu(this.value)" aria-label="Selecionar aluno pré-cadastrado">
+              <option value="">— Inserir dados manualmente —</option>
+              <option value="a1">Aluno #001 · João Silva</option>
+              <option value="a2">Aluno #002 · Maria Souza</option>
+              <option value="a3">Aluno #003 · Pedro Alves</option>
+              <option value="a4">Aluno #004 · Ana Costa</option>
+            </select>
+            <div class="sel-chev" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+          </div>
+
+          <hr class="dvd"/>
+          <div class="sec-lbl">Indicadores acadêmicos</div>
+
+          <!-- Frequência -->
+          <div class="sl-grp">
+            <div class="sl-top">
+              <label class="sl-lbl" for="sFreq">Frequência</label>
+              <span class="sl-val" id="vFreq" aria-live="polite">75%</span>
+            </div>
+            <div class="sl-track">
+              <div class="sl-fill" id="fFreq" style="width:75%"></div>
+              <input type="range" id="sFreq" min="0" max="100" value="75" aria-label="Frequência em porcentagem" oninput="upSl('sFreq','vFreq','fFreq','%',0)"/>
+            </div>
+            <div class="sl-hints" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+          </div>
+
+          <!-- Nota -->
+          <div class="sl-grp">
+            <div class="sl-top">
+              <label class="sl-lbl" for="sNota">Nota Média</label>
+              <span class="sl-val" id="vNota" aria-live="polite">6.0</span>
+            </div>
+            <div class="sl-track">
+              <div class="sl-fill" id="fNota" style="width:60%"></div>
+              <input type="range" id="sNota" min="0" max="10" step="0.1" value="6" aria-label="Nota média de 0 a 10" oninput="upSl('sNota','vNota','fNota','',1)"/>
+            </div>
+            <div class="sl-hints" aria-hidden="true"><span>0.0</span><span>5.0</span><span>10.0</span></div>
+          </div>
+
+          <!-- Faltas -->
+          <div class="sl-grp">
+            <div class="sl-top">
+              <label class="sl-lbl" for="sFalt">Faltas Consecutivas</label>
+              <span class="sl-val" id="vFalt" aria-live="polite">3</span>
+            </div>
+            <div class="sl-track">
+              <div class="sl-fill" id="fFalt" style="width:15%"></div>
+              <input type="range" id="sFalt" min="0" max="20" value="3" aria-label="Número de faltas consecutivas" oninput="upSl('sFalt','vFalt','fFalt','',0)"/>
+            </div>
+            <div class="sl-hints" aria-hidden="true"><span>0</span><span>10</span><span>20</span></div>
+          </div>
+
+          <!-- Reprovações -->
+          <div class="sl-grp" style="margin-bottom:0">
+            <div class="sl-top" style="margin-bottom:9px">
+              <span class="sl-lbl" id="repLbl">Reprovações Anteriores</span>
+            </div>
+            <div class="stp-row" role="group" aria-labelledby="repLbl">
+              <button class="stp-btn" onclick="chgRep(-1)" aria-label="Diminuir" id="btnM" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <div class="stp-v" id="repV" aria-live="polite" aria-label="Reprovações: 0">0</div>
+              <button class="stp-btn" onclick="chgRep(1)" aria-label="Aumentar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <hr class="dvd"/>
+          <div class="sec-lbl">Cenários rápidos</div>
+          <div class="pre-grid" role="group" aria-label="Cenários pré-definidos">
+            <button class="pre-btn p-low" onclick="apPre('baixo',this)" aria-pressed="false">Baixo</button>
+            <button class="pre-btn p-med" onclick="apPre('medio',this)" aria-pressed="false">Médio</button>
+            <button class="pre-btn p-hi"  onclick="apPre('alto',this)"  aria-pressed="false">Alto</button>
+            <button class="pre-btn p-cr"  onclick="apPre('crit',this)"  aria-pressed="false">Crítico</button>
+          </div>
+
+          <button class="btn-cta" id="btnA" onclick="analyze()" aria-label="Analisar risco de evasão">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Analisar Risco
+          </button>
+
+        </div>
+      </div>
+    </aside>
+
+    <!-- RESULTS -->
+    <section class="res-col" aria-label="Resultados" aria-live="polite">
+
+      <div class="card" id="emptyCard">
+        <div class="empty">
+          <div class="empty-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <h3>Nenhuma análise realizada</h3>
+          <p>Configure os dados do aluno e clique em <strong>Analisar Risco</strong> para gerar o diagnóstico preditivo.</p>
+        </div>
+      </div>
+
+      <div id="resWrap" hidden style="display:flex;flex-direction:column;gap:18px">
+
+        <!-- Hero -->
+        <div class="r-hero safe ai" id="rHero" role="status">
+          <div class="r-left">
+            <div class="r-tag" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Diagnóstico preditivo
+            </div>
+            <div class="r-title" id="rTitle">Baixo Risco</div>
+            <div class="r-desc" id="rDesc">Perfil estável. Monitoramento preventivo recomendado.</div>
+          </div>
+          <div class="r-score">
+            <div class="sc-ring" aria-hidden="true">
+              <svg width="76" height="76" viewBox="0 0 76 76">
+                <circle class="sc-bg" cx="38" cy="38" r="32"/>
+                <circle class="sc-fill" id="scFill" cx="38" cy="38" r="32"/>
+              </svg>
+              <div class="sc-num" id="scNum">0%</div>
+            </div>
+            <div class="sc-lbl">Risco</div>
+          </div>
+        </div>
+
+        <!-- Meter -->
+        <div class="card">
+          <div class="c-hdr">
+            <div class="c-hdr-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+            <h3 class="c-title">Indicador de Risco</h3>
+          </div>
+          <div class="c-body">
+            <div class="meter-bar" role="progressbar" id="mBar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Nível de risco">
+              <div class="meter-fill safe" id="mFill" style="width:0%"></div>
+            </div>
+            <div class="zones" aria-hidden="true">
+              <div class="zone z-s">Baixo (0–30%)</div>
+              <div class="zone z-m">Médio (30–60%)</div>
+              <div class="zone z-r">Alto (60–100%)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="met-grid" id="metGrid" role="region" aria-label="Indicadores detalhados"></div>
+
+        <!-- Tree -->
+        <div class="card">
+          <div class="c-hdr">
+            <div class="c-hdr-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <h3 class="c-title">Caminho na Árvore de Decisão</h3>
+          </div>
+          <div class="c-body">
+            <div class="tree" id="treeEl" role="list" aria-label="Passos da árvore de decisão"></div>
+          </div>
+        </div>
+
+        <!-- Interventions -->
+        <div class="card">
+          <div class="c-hdr">
+            <div class="c-hdr-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+            <h3 class="c-title">Intervenções Recomendadas</h3>
+          </div>
+          <div class="c-body">
+            <div class="int-list" id="intList" role="list" aria-label="Intervenções recomendadas"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="ftr" role="contentinfo">
+  <div class="ftr-in">
+    <p class="ftr-txt"><strong>TSI Dropout Radar</strong> · Protótipo v0.1 · Eduardo &amp; Renan · Curso de TSI</p>
+    <div class="chips">
+      <span class="chip"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Árvore de Decisão</span>
+      <span class="chip"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Mineração de Dados</span>
+      <span class="chip"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> HTML · CSS · JS</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ── State ── */
+  let rep = 0;
+
+  /* ── Slider ── */
+  function upSl(sid, vid, fid, sfx, dec) {
+    const el = document.getElementById(sid);
+    const v = parseFloat(el.value), mx = parseFloat(el.max);
+    const ve = document.getElementById(vid), fe = document.getElementById(fid);
+    ve.textContent = v.toFixed(dec) + sfx;
+    fe.style.width = ((v / mx) * 100) + '%';
+    let vc = 'sl-val', fc = 'sl-fill';
+    if (sid==='sFreq')  { if(v<60){vc+=' danger';fc+=' danger'}else if(v<75){vc+=' warn';fc+=' warn'} }
+    if (sid==='sNota')  { if(v<5) {vc+=' danger';fc+=' danger'}else if(v<6) {vc+=' warn';fc+=' warn'} }
+    if (sid==='sFalt')  { if(v>=10){vc+=' danger';fc+=' danger'}else if(v>=5){vc+=' warn';fc+=' warn'} }
+    ve.className = vc; fe.className = fc;
+    clrPre(); document.getElementById('sel').value = '';
+  }
+
+  /* ── Stepper ── */
+  function chgRep(d) {
+    rep = Math.max(0, Math.min(10, rep + d));
+    const e = document.getElementById('repV');
+    e.textContent = rep; e.setAttribute('aria-label','Reprovações: '+rep);
+    e.className = 'stp-v' + (rep>=3?' danger':rep>=1?' warn':'');
+    document.getElementById('btnM').disabled = rep === 0;
+    clrPre(); document.getElementById('sel').value = '';
+  }
+
+  /* ── Presets & Students ── */
+  const PRES = {
+    baixo:{freq:92,nota:8.0,falt:1,rep:0},
+    medio:{freq:72,nota:5.5,falt:4,rep:1},
+    alto: {freq:58,nota:4.0,falt:8,rep:2},
+    crit: {freq:30,nota:2.5,falt:15,rep:4},
+  };
+  const STUS = {
+    a1:{freq:88,nota:7.5,falt:2,rep:0},
+    a2:{freq:55,nota:3.8,falt:9,rep:3},
+    a3:{freq:70,nota:5.2,falt:5,rep:1},
+    a4:{freq:95,nota:9.1,falt:0,rep:0},
+  };
+
+  function applyVals(p) {
+    document.getElementById('sFreq').value = p.freq; upSl('sFreq','vFreq','fFreq','%',0);
+    document.getElementById('sNota').value = p.nota; upSl('sNota','vNota','fNota','',1);
+    document.getElementById('sFalt').value = p.falt; upSl('sFalt','vFalt','fFalt','',0);
+    rep = p.rep;
+    const e = document.getElementById('repV');
+    e.textContent = rep; e.setAttribute('aria-label','Reprovações: '+rep);
+    e.className = 'stp-v'+(rep>=3?' danger':rep>=1?' warn':'');
+    document.getElementById('btnM').disabled = rep === 0;
+  }
+
+  function apPre(k, btn) {
+    clrPre(); btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+    document.getElementById('sel').value = '';
+    applyVals(PRES[k]);
+  }
+
+  function loadStu(v) {
+    clrPre();
+    if (!v || !STUS[v]) return;
+    applyVals(STUS[v]);
+  }
+
+  function clrPre() {
+    document.querySelectorAll('.pre-btn').forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+  }
+
+  /* ── Risk calc ── */
+  function calcRisk(freq, nota, falt, r) {
+    let s = 0;
+    if(freq<75) s+=40; else if(freq<85) s+=15;
+    if(nota<5)  s+=35; else if(nota<6)  s+=15;
+    if(falt>=10) s+=20; else if(falt>=5) s+=8;
+    if(r>=3) s+=15; else if(r>=1) s+=5;
+    if(freq<75 && nota<5) s+=10;
+    return Math.min(100, s);
+  }
+
+  function lvl(s) { return s>=60?'risk':s>=30?'medium':'safe'; }
+
+  /* ── Tree builder ── */
+  function buildTree(freq, nota, falt, r) {
+    const steps = [];
+    steps.push({q:'Frequência abaixo de 75%?', ans:freq<75, type:'node'});
+    if(freq<75){
+      steps.push({q:'Nota média abaixo de 5.0?', ans:nota<5, type:'node'});
+      if(nota<5){ steps.push({q:'Alto Risco de Evasão', type:'leaf', cls:'l-r'}); }
+      else {
+        steps.push({q:'Mais de 2 reprovações anteriores?', ans:r>=2, type:'node'});
+        steps.push({q:r>=2?'Alto Risco de Evasão':'Médio Risco de Evasão', type:'leaf', cls:r>=2?'l-r':'l-m'});
+      }
+    } else {
+      steps.push({q:'Nota média abaixo de 6.0?', ans:nota<6, type:'node'});
+      if(nota<6){
+        steps.push({q:'5 ou mais faltas consecutivas?', ans:falt>=5, type:'node'});
+        steps.push({q:falt>=5?'Médio Risco de Evasão':'Baixo Risco de Evasão', type:'leaf', cls:falt>=5?'l-m':'l-s'});
+      } else {
+        steps.push({q:'Baixo Risco de Evasão', type:'leaf', cls:'l-s'});
+      }
+    }
+    return steps;
+  }
+
+  /* ── Icons (inline SVG) ── */
+  const IC = {
+    phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12.4a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.37a16 16 0 0 0 6.72 6.72l.87-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+    heart:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+    eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+    msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    check:'<polyline points="20 6 9 17 4 12"/>',
+    star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    xcircle:'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+    bar:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+    cal:'<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  };
+  function ico(k,s=15) { return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`; }
+
+  /* ── Interventions ── */
+  const INTS = {
+    risk:[
+      {i:'phone',ic:'ico-r',t:'Contato imediato com o aluno',s:'Telefonar ou enviar e-mail urgente para verificar situação',p:'hi'},
+      {i:'users',ic:'ico-r',t:'Reunião com o coordenador do curso',s:'Avaliar situação acadêmica, motivacional e socioeconômica',p:'hi'},
+      {i:'book', ic:'ico-a',t:'Plano de recuperação de notas',s:'Monitoramento semanal com professores das disciplinas em risco',p:'me'},
+      {i:'heart',ic:'ico-a',t:'Encaminhamento para assistência estudantil',s:'Verificar necessidades financeiras ou emocionais do aluno',p:'me'},
+    ],
+    medium:[
+      {i:'eye',  ic:'ico-a',t:'Monitoramento próximo do desempenho',s:'Acompanhar notas e frequência nas próximas semanas',p:'me'},
+      {i:'book', ic:'ico-a',t:'Indicação de tutoria ou monitoria',s:'Encaminhar aluno a grupos de estudo ou reforço',p:'me'},
+      {i:'msg',  ic:'ico-g',t:'Conversa informal com professor',s:'Verificar engajamento e identificar dificuldades',p:'lo'},
+    ],
+    safe:[
+      {i:'check',ic:'ico-g',t:'Manter acompanhamento preventivo',s:'Nenhuma ação urgente necessária no momento',p:'lo'},
+      {i:'users',ic:'ico-g',t:'Incentivar participação em grupos de estudo',s:'Fortalecer vínculos com colegas e com o curso',p:'lo'},
+      {i:'star', ic:'ico-s',t:'Reconhecer o bom desempenho',s:'Feedbacks positivos aumentam a retenção acadêmica',p:'lo'},
+    ],
+  };
+
+  /* ── ANALYZE ── */
+  function analyze() {
+    const btn = document.getElementById('btnA');
+    btn.classList.add('ld');
+    btn.innerHTML = '<div class="sp"></div> Analisando...';
+    btn.setAttribute('aria-busy','true');
+
+    setTimeout(() => {
+      const freq = parseFloat(document.getElementById('sFreq').value);
+      const nota = parseFloat(document.getElementById('sNota').value);
+      const falt = parseInt(document.getElementById('sFalt').value);
+      const r    = rep;
+
+      const score = calcRisk(freq, nota, falt, r);
+      const level = lvl(score);
+
+      const CFG = {
+        safe:  {label:'Baixo Risco', desc:'Perfil estável. Monitoramento preventivo recomendado.'},
+        medium:{label:'Risco Médio', desc:'Atenção necessária. Acompanhamento próximo indicado.'},
+        risk:  {label:'Alto Risco',  desc:'Intervenção imediata necessária. Risco elevado de abandono.'},
+      };
+
+      // Show results
+      document.getElementById('emptyCard').style.display = 'none';
+      const rw = document.getElementById('resWrap');
+      rw.removeAttribute('hidden'); rw.style.display = 'flex';
+
+      // Hero
+      const hero = document.getElementById('rHero');
+      hero.className = `r-hero ${level} ai`;
+      document.getElementById('rTitle').textContent = CFG[level].label;
+      document.getElementById('rDesc').textContent  = CFG[level].desc;
+
+      // Score ring
+      const C = 2*Math.PI*32; // ~201
+      const fill = document.getElementById('scFill');
+      fill.style.strokeDasharray = C;
+      fill.style.strokeDashoffset = C;
+      setTimeout(()=>{ fill.style.strokeDashoffset = C - (score/100)*C; }, 50);
+      document.getElementById('scNum').textContent = score+'%';
+
+      // Meter
+      const mf = document.getElementById('mFill');
+      mf.style.width='0%'; mf.className=`meter-fill ${level}`;
+      setTimeout(()=>{ mf.style.width=score+'%'; }, 60);
+      document.getElementById('mBar').setAttribute('aria-valuenow', score);
+
+      // Metrics
+      const fS = freq>=85?{t:'Adequada',b:'b-ok'}:freq>=75?{t:'Limite',b:'b-wa'}:{t:'Crítica',b:'b-da'};
+      const nS = nota>=7 ?{t:'Boa',    b:'b-ok'}:nota>=6 ?{t:'Regular',b:'b-wa'}:{t:'Insuf.',b:'b-da'};
+      const aS = falt<=2 ?{t:'Normal', b:'b-ok'}:falt<=5 ?{t:'Atenção',b:'b-wa'}:{t:'Excessiva',b:'b-da'};
+      const rS = r===0   ?{t:'Nenhuma',b:'b-ok'}:r<=2    ?{t:'Poucas', b:'b-wa'}:{t:'Muitas',b:'b-da'};
+
+      const fIC = fS.b==='b-ok'?'ico-g':fS.b==='b-wa'?'ico-a':'ico-r';
+      const nIC = nS.b==='b-ok'?'ico-g':nS.b==='b-wa'?'ico-a':'ico-r';
+      const aIC = aS.b==='b-ok'?'ico-g':aS.b==='b-wa'?'ico-a':'ico-r';
+      const rIC = rS.b==='b-ok'?'ico-g':rS.b==='b-wa'?'ico-a':'ico-r';
+
+      document.getElementById('metGrid').innerHTML = `
+        <div class="met-card" role="article" aria-label="Frequência: ${freq}%">
+          <div class="met-top"><div class="met-ico ${fIC}" aria-hidden="true">${ico('bar')}</div><span class="badge ${fS.b}">${fS.t}</span></div>
+          <div class="met-val">${freq}%</div><div class="met-desc">Frequência</div>
+        </div>
+        <div class="met-card" role="article" aria-label="Nota média: ${nota.toFixed(1)}">
+          <div class="met-top"><div class="met-ico ${nIC}" aria-hidden="true">${ico('edit')}</div><span class="badge ${nS.b}">${nS.t}</span></div>
+          <div class="met-val">${nota.toFixed(1)}</div><div class="met-desc">Nota Média</div>
+        </div>
+        <div class="met-card" role="article" aria-label="Faltas consecutivas: ${falt}">
+          <div class="met-top"><div class="met-ico ${aIC}" aria-hidden="true">${ico('cal')}</div><span class="badge ${aS.b}">${aS.t}</span></div>
+          <div class="met-val">${falt}</div><div class="met-desc">Faltas Consec.</div>
+        </div>
+        <div class="met-card" role="article" aria-label="Reprovações: ${r}" style="grid-column:span 3">
+          <div class="met-top"><div class="met-ico ${rIC}" aria-hidden="true">${ico('xcircle')}</div><span class="badge ${rS.b}">${rS.t}</span></div>
+          <div class="met-val">${r}</div><div class="met-desc">Reprovações Anteriores</div>
+        </div>
+      `;
+
+      // Tree
+      const steps = buildTree(freq, nota, falt, r);
+      document.getElementById('treeEl').innerHTML = steps.map((s,i) => {
+        const last = i===steps.length-1;
+        if(s.type==='leaf') return `
+          <div class="t-step" role="listitem"><div class="t-left"><div class="t-dot ${s.cls}" aria-hidden="true">${ico('check',11)}</div></div>
+          <div class="t-right"><div class="t-q" style="font-weight:700">${s.q}</div></div></div>`;
+        return `
+          <div class="t-step" role="listitem" style="animation-delay:${i*60}ms">
+            <div class="t-left">
+              <div class="t-dot act" aria-hidden="true" style="font-size:9px;font-weight:800">${i+1}</div>
+              ${!last?'<div class="t-line act"></div>':''}
+            </div>
+            <div class="t-right">
+              <div class="t-q">${s.q}</div>
+              <div class="t-ans ${s.ans?'yes':'no'}" aria-label="Resposta: ${s.ans?'Sim':'Não'}">${s.ans?'→ Sim':'→ Não'}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+      // Interventions
+      const PL = {hi:'Urgente',me:'Médio',lo:'Baixo'};
+      const PC = {hi:'p-hi',me:'p-me',lo:'p-lo'};
+      document.getElementById('intList').innerHTML = INTS[level].map((it,i) => `
+        <div class="int-item" role="listitem" style="animation-delay:${i*60}ms" aria-label="${it.t}">
+          <div class="int-ico ${it.ic}" aria-hidden="true">${ico(it.i)}</div>
+          <div class="int-body"><div class="int-title">${it.t}</div><div class="int-sub">${it.s}</div></div>
+          <span class="pri ${PC[it.p]}" aria-label="Prioridade: ${PL[it.p]}">${PL[it.p]}</span>
+        </div>
+      `).join('');
+
+      // Mobile scroll
+      if(window.innerWidth < 768) {
+        document.getElementById('resWrap').scrollIntoView({behavior:'smooth',block:'start'});
+      }
+
+      // Reset btn
+      btn.classList.remove('ld');
+      btn.innerHTML = `${ico('check',16)} Analisar Novamente`;
+      btn.setAttribute('aria-busy','false');
+
+    }, 600);
+  }
+</script>
+
+</body>
+</html>
